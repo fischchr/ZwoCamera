@@ -58,6 +58,10 @@ class ZwoMini(Camera):
 
 class CameraSubprocess(Subprocess):
     """Implentation of a subprocess for running the ZWO mini camera. """
+    def __init__(self, uid: int, com_queue: Queue, res_queue: Queue):
+        super().__init__(uid, com_queue, res_queue)
+
+        self._mode = None
 
     def run(self):
         """Extend the event loop of subprocess. """
@@ -78,11 +82,21 @@ class CameraSubprocess(Subprocess):
         self.camera.stop_video_capture()
         self.camera.highspeed = False
 
+
     def inloop(self):
         """Add a function call in the event loop to read out the camera. """
         
-        img_data = self.camera.capture_video_frame()
-        self.send((CMD_DISPLAY_IMAGE, img_data))
+        if self._mode == CMD_CAMERA_REC_MODE:
+            img_data = []
+            for i in range(100):
+                img_data.append(self.camera.capture_video_frame())
+            # Update GUI
+            self.send((CMD_DISPLAY_IMAGE, img_data[-1]))    
+            # Return Image stack
+            self.send((CMD_RETURN_REC, img_data))    
+        elif self._mode == CMD_CAMERA_CONTINOUS_MODE:
+            img_data = self.camera.capture_video_frame()
+            self.send((CMD_DISPLAY_IMAGE, img_data))
 
     def handle_input(self, res):
         """Overwrite the function that handles commands from the main process. """
@@ -91,7 +105,16 @@ class CameraSubprocess(Subprocess):
             self.get_exposure_time()
         elif res[0] == CMD_CAMERA_SET_EXP:
             self.set_exposure_time(res[1])
-
+        elif res[0] == CMD_CAMERA_MODE_STOP:
+            # Set camera mode to not recording
+            self._mode = CMD_CAMERA_MODE_STOP
+        elif res[0] == CMD_CAMERA_CONTINOUS_MODE:
+            # Set camera mode to continusous
+            self._mode = CMD_CAMERA_CONTINOUS_MODE
+        elif res[0] == CMD_CAMERA_REC_MODE:
+            # Set camera mode to recording
+            self._mode = CMD_CAMERA_REC_MODE   
+        
     def get_exposure_time(self):
         """Get the exposure time from the camera and put the result on the res_queue. """
 
@@ -169,3 +192,12 @@ class CameraInterface(Interface):
 
         logging.debug(f'{self} setting exposure time to {val * 1e6} us.')
         self.com_queue.put((CMD_CAMERA_SET_EXP, val))
+
+    def stop_recording(self):
+        self.com_queue.put((CMD_CAMERA_MODE_STOP, ))
+
+    def set_continuous_mode(self):
+        self.com_queue.put((CMD_CAMERA_CONTINOUS_MODE, ))
+
+    def set_rec_mode(self):
+        self.com_queue.put((CMD_CAMERA_REC_MODE, ))

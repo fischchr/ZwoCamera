@@ -91,6 +91,8 @@ class MainWindow(QMainWindow):
 
         # Connect elements to functions
         self.exp_time_input.editingFinished.connect(self.set_exp_time)
+        self.StreamingButton.clicked.connect(self.toggle_streaming_mode)
+        self.RecordingButton.clicked.connect(self.toggle_recording_mode)
 
 
         ### Initialize subprocesses ###
@@ -122,6 +124,7 @@ class MainWindow(QMainWindow):
         # Start camera process
         self.start_subprocess(CAMERA_ID)
         self.get_exp_time()
+        self.set_camera_not_recording()
 
 
     ### GUI functions for controlling the camera
@@ -139,6 +142,46 @@ class MainWindow(QMainWindow):
                 self.interface_manager[CAMERA_ID].set_exp_time(val)
         except ValueError:
             pass
+
+    def toggle_streaming_mode(self):
+        if self.camera_mode == CMD_CAMERA_MODE_STOP or self.camera_mode == CMD_CAMERA_REC_MODE:
+            self.set_camera_continuous_mode()
+        else:
+            self.set_camera_not_recording()
+
+    def toggle_recording_mode(self):
+        if self.camera_mode == CMD_CAMERA_MODE_STOP or self.camera_mode == CMD_CAMERA_CONTINOUS_MODE:
+            self.set_camera_rec_mode()
+        else:
+            self.set_camera_not_recording()
+
+
+    def set_camera_not_recording(self):
+        logging.info('Stopping all recording')
+        # Stop camera
+        self.camera_mode = CMD_CAMERA_MODE_STOP
+        self.interface_manager[CAMERA_ID].stop_recording()
+        # Reset buttons
+        self.StreamingButton.setText('Start Stream')
+        self.RecordingButton.setText('Start Recording')
+
+    def set_camera_continuous_mode(self):
+        logging.info('Starting continuous video streaming')
+        # Start streaming
+        self.camera_mode = CMD_CAMERA_CONTINOUS_MODE
+        self.interface_manager[CAMERA_ID].set_continuous_mode()
+        # Set buttons
+        self.StreamingButton.setText('Stop Stream')
+        self.RecordingButton.setText('Start Recording')
+
+    def set_camera_rec_mode(self):
+        logging.info('Starting recording')
+        # Start recording
+        self.camera_mode = CMD_CAMERA_REC_MODE
+        self.interface_manager[CAMERA_ID].set_rec_mode()
+        # Set buttons
+        self.StreamingButton.setText('Start Stream')
+        self.RecordingButton.setText('Stop Recording')
 
 
     ### Handling starting and stopping of subprocesses ###
