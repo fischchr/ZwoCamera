@@ -114,6 +114,10 @@ class CameraSubprocess(Subprocess):
         elif res[0] == CMD_CAMERA_REC_MODE:
             # Set camera mode to recording
             self._mode = CMD_CAMERA_REC_MODE   
+        elif res[0] == CMD_CAMERA_GET_ROI:
+            self.get_roi()
+        elif res[0] == CMD_CAMERA_SET_ROI:
+            self.set_roi(*res[1])
         
     def get_exposure_time(self):
         """Get the exposure time from the camera and put the result on the res_queue. """
@@ -130,9 +134,21 @@ class CameraSubprocess(Subprocess):
 
         self.get_exposure_time()
 
+    def get_roi(self):
+
+        logging.debug(f'{self} get roi.')
+        roi_x_start, roi_y_start, roi_x_width, roi_y_height = self.camera.get_roi()
+        data = [CMD_CAMERA_GET_ROI, (roi_x_start, roi_x_width, roi_y_start, roi_y_height)]
+        self.send(data)
+
+    def set_roi(self, roi_x_1, roi_y_1, roi_x_2, roi_y_2):
+
+        logging.debug(f'{self} set roi to {roi_x_1} {roi_y_1} {roi_x_2} {roi_y_2}.')
+        self.camera.set_roi(roi_x_1, roi_y_1, roi_x_2, roi_y_2, image_type=ASI_IMG_RAW8)
+
 
 class CameraInterface(Interface):
-    def __init__(self, image_label, exp_time_input, res_queue: Queue):
+    def __init__(self, image_label, exp_time_input, res_queue: Queue, roi_inputs: list):
         """Constructor. """
 
         super().__init__(CAMERA_ID, res_queue)
@@ -142,6 +158,9 @@ class CameraInterface(Interface):
 
         # Initialize the GUI element for displaying the camera image
         self.image_label = image_label
+
+        # ROI inputs
+        self.roi_inputs = roi_inputs
 
     def init_subprocess(self):
         """Overwrite the parent function for initializing the subprocess. """
@@ -157,6 +176,8 @@ class CameraInterface(Interface):
             self.display_image(data[1])
         elif cmd == CMD_CAMERA_GET_EXP:
             self.display_exp_time(data[1])
+        elif cmd == CMD_CAMERA_GET_ROI:
+            self.update_roi(*data[1])
 
     def display_image(self, image_data):
         """Display an image. """
@@ -181,6 +202,15 @@ class CameraInterface(Interface):
         logging.debug(f'{self} received exposure {val * 1e6} us from {self.subprocess}.')
         self.exp_time_input.setText(str(val))
 
+    def update_roi(self, roi_x_start, roi_x_width, roi_y_start, roi_y_height):
+        #roi_x_start, self.roi_x_width, self.roi_y_start, self.roi_y_height
+        
+        logging.debug(f'{self} received roi {roi_x_start}, {roi_x_width}, {roi_y_start}, {roi_y_height} from {self.subprocess}.')
+        self.roi_inputs[0].setText(str(roi_x_start))
+        self.roi_inputs[1].setText(str(roi_x_width))
+        self.roi_inputs[2].setText(str(roi_y_start))
+        self.roi_inputs[3].setText(str(roi_y_height))
+
     def get_exp_time(self):
         """Query the exposure time from the subprocess. """
 
@@ -192,6 +222,20 @@ class CameraInterface(Interface):
 
         logging.debug(f'{self} setting exposure time to {val * 1e6} us.')
         self.com_queue.put((CMD_CAMERA_SET_EXP, val))
+    
+    def set_roi(self, roi_x_1, roi_y_1, roi_x_2, roi_y_2):
+        """Set the ROI. """
+
+        roi = (roi_x_1, roi_y_1, roi_x_2, roi_y_2)
+
+        logging.debug(f'{self} setting ROI to {roi}')
+        self.com_queue.put((CMD_CAMERA_SET_ROI, roi))
+
+    def get_roi(self):
+        """Get the ROI. """
+
+        logging.debug(f'{self} getting ROI')
+        self.com_queue.put((CMD_CAMERA_GET_ROI, ))
 
     def stop_recording(self):
         self.com_queue.put((CMD_CAMERA_MODE_STOP, ))

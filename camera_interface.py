@@ -94,13 +94,17 @@ class MainWindow(QMainWindow):
         self.StreamingButton.clicked.connect(self.toggle_streaming_mode)
         self.RecordingButton.clicked.connect(self.toggle_recording_mode)
 
+        roi_inputs = [self.roi_x_start, self.roi_x_width, self.roi_y_start, self.roi_y_height]
+        for input in roi_inputs:
+            input.editingFinished.connect(self.set_camera_roi)
+
 
         ### Initialize subprocesses ###
         # Create result queue which is shared by all subprocesses
         self.res_queue = Queue()
 
         # Initialize the camera interface
-        self.camera_interface = CameraInterface(self.imageLabel, self.exp_time_input, self.res_queue)
+        self.camera_interface = CameraInterface(self.imageLabel, self.exp_time_input, self.res_queue, roi_inputs)
 
         # Create the interface manager
         self.interface_manager = InterfaceManager(self.camera_interface)
@@ -124,6 +128,7 @@ class MainWindow(QMainWindow):
         # Start camera process
         self.start_subprocess(CAMERA_ID)
         self.get_exp_time()
+        self.get_camera_roi()
         self.set_camera_not_recording()
 
 
@@ -182,6 +187,44 @@ class MainWindow(QMainWindow):
         # Set buttons
         self.StreamingButton.setText('Start Stream')
         self.RecordingButton.setText('Stop Recording')
+
+    def get_camera_roi(self):
+
+        self.interface_manager[CAMERA_ID].get_roi()
+
+    def set_camera_roi(self):
+        logging.info('Updating ROI')
+        try:
+            roi_x_start = int(self.roi_x_start.text())
+            roi_x_width = int(self.roi_x_width.text())
+            roi_y_start = int(self.roi_y_start.text())
+            roi_y_height = int(self.roi_y_height.text())
+
+            # Make sure width is divisible by 8
+            roi_x_width = int(roi_x_width / 8) * 8
+            assert roi_x_width > 0
+
+            # Make sure height is divisible by 2
+            roi_y_height = int(roi_y_height / 2) * 2
+            assert roi_y_height > 0
+
+            roi_x_1 = roi_x_start
+            roi_x_2 = roi_x_start + roi_x_width
+            assert roi_x_1 >= 0 and roi_x_2 >= 0 and roi_x_1 <= 1280 and roi_x_2 <= 1280
+
+            roi_y_1 = roi_y_start
+            roi_y_2 = roi_y_start + roi_y_height
+            assert roi_y_1 >= 0 and roi_y_2 >= 0 and roi_y_1 <= 960 and roi_y_2 <= 960
+
+            self.interface_manager[CAMERA_ID].set_roi(roi_x_1, roi_y_1, roi_x_2, roi_y_2)
+
+        except ValueError:
+            pass
+
+        except AssertionError:
+            pass
+
+        self.get_camera_roi()
 
 
     ### Handling starting and stopping of subprocesses ###
