@@ -94,7 +94,7 @@ class MainWindow(QMainWindow):
         self.StreamingButton.clicked.connect(self.toggle_streaming_mode)
         self.RecordingButton.clicked.connect(self.toggle_recording_mode)
 
-        roi_inputs = [self.roi_x_start, self.roi_x_width, self.roi_y_start, self.roi_y_height]
+        roi_inputs = [self.roi_offset_x, self.roi_width, self.roi_offset_y, self.roi_height]
         for input in roi_inputs:
             input.editingFinished.connect(self.set_camera_roi)
 
@@ -198,34 +198,28 @@ class MainWindow(QMainWindow):
     def set_camera_roi(self):
         logging.info('Updating ROI')
         try:
-            roi_x_start = int(self.roi_x_start.text())
-            roi_x_width = int(self.roi_x_width.text())
-            roi_y_start = int(self.roi_y_start.text())
-            roi_y_height = int(self.roi_y_height.text())
+            # Get inputs
+            offset_x = self.roi_offset_x.value()
+            width = self.roi_width.value()
+            offset_y = self.roi_offset_y.value()
+            height = self.roi_height.value()
 
             # Make sure width is divisible by 8
-            roi_x_width = int(roi_x_width / 8) * 8
-            assert roi_x_width > 0
+            roi_width = int(width / 8) * 8
+            assert roi_width > 0, 'ROI width must be positive'
 
             # Make sure height is divisible by 2
-            roi_y_height = int(roi_y_height / 2) * 2
-            assert roi_y_height > 0
+            roi_height = int(height / 2) * 2
+            assert roi_height > 0, 'ROI height must be positive'
 
-            roi_x_1 = roi_x_start
-            roi_x_2 = roi_x_start + roi_x_width
-            assert roi_x_1 >= 0 and roi_x_2 >= 0 and roi_x_1 <= 1280 and roi_x_2 <= 1280
+            # Set ROI
+            self.interface_manager[CAMERA_ID].set_roi(offset_x, roi_width, offset_y, roi_height)
 
-            roi_y_1 = roi_y_start
-            roi_y_2 = roi_y_start + roi_y_height
-            assert roi_y_1 >= 0 and roi_y_2 >= 0 and roi_y_1 <= 960 and roi_y_2 <= 960
+        except ValueError as e:
+            logging.info(f'{self} received error {e}')
 
-            self.interface_manager[CAMERA_ID].set_roi(roi_x_1, roi_y_1, roi_x_2, roi_y_2)
-
-        except ValueError:
-            pass
-
-        except AssertionError:
-            pass
+        except AssertionError as e:
+            logging.info(f'{self} received error {e}')
 
         self.get_camera_roi()
 

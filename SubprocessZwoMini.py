@@ -4,6 +4,51 @@ from SubprocessHeader import *
 from multiprocessing import Queue
 from PyQt5.QtGui import QImage, QPixmap
 from PIL  import Image
+import time
+
+
+def roi_absolute_to_swh(roi_x_1, roi_x_2, roi_y_1, roi_y_2):
+    start_x = roi_x_1
+    width = abs(roi_x_2 - roi_x_1)
+    start_y = roi_y_1
+    height = abs(roi_y_2 - roi_y_1)
+
+    return start_x, start_y, width, height
+
+def roi_swh_to_absolute(start_x, start_y, width, height):
+    roi_x_1 = start_x
+    roi_x_2 = roi_x_1 + width
+    roi_y_1 = start_y
+    roi_y_2 = roi_y_1 + height
+
+    return roi_x_1, roi_x_2, roi_y_1, roi_y_2
+
+def roi_absolute_to_offset(roi_x_1, roi_x_2, roi_y_1, roi_y_2, sensor_w, sensor_h):
+    roi_width = roi_x_2 - roi_x_1
+    offset_x = roi_x_1 - int(sensor_w / 2) + int(roi_width / 2)
+    roi_height = roi_y_2 - roi_y_1
+    offset_y = roi_y_1 - int(sensor_h / 2) + int(roi_height / 2)
+    
+
+    return offset_x, roi_width, offset_y, roi_height
+
+def roi_offset_to_absolute(offset_x, roi_width, offset_y, roi_height, sensor_w, sensor_h):
+    roi_x_1 = int(sensor_w / 2) - int(roi_width / 2) + offset_x
+    roi_x_2 = roi_x_1 + roi_width
+    roi_y_1 = int(sensor_h / 2) - int(roi_height / 2) + offset_y
+    roi_y_2 = roi_y_1 + roi_height
+
+    return roi_x_1, roi_x_2, roi_y_1, roi_y_2
+
+a = (0, 64, 0, 960)
+b = roi_offset_to_absolute(*a, 1280, 960)
+#print(b)
+c = roi_absolute_to_swh(*b)
+#print(c)
+d = roi_swh_to_absolute(*c)
+e = roi_absolute_to_offset(*d, 1280, 960)
+
+assert a == e
 
 
 class ZwoCamera(Camera):
@@ -163,9 +208,7 @@ class CameraSubprocess(Subprocess):
         elif res[0] == CMD_CAMERA_GET_ROI:
             self.get_roi()
         elif res[0] == CMD_CAMERA_SET_ROI:
-            #self.camera.stop_video_capture()
             self.set_roi(*res[1])
-            #self.camera.start_video_capture()
         elif res[0] == CMD_CAMERA_GET_TEMP:
             raise NotImplementedError
         elif res[0] == CMD_CAMERA_SET_TEMP:
@@ -189,21 +232,74 @@ class CameraSubprocess(Subprocess):
         self.get_exposure_time()
 
     def get_roi(self):
-
-        logging.debug(f'{self} get roi.')
+        """Get the ROI and trigger updating of the GUI.
         
-        roi_x_start, roi_y_start, roi_x_width, roi_y_height = self.camera.get_roi()
-        data = [CMD_CAMERA_GET_ROI, (roi_x_start, roi_x_width, roi_y_start, roi_y_height)]
+        # Returns
+        * offset_x::int - Offset from the sensor center in x.
+        * roi_width::int -  Width of the ROI.
+        * offset_y::int - Offset from the sensor center in y.
+        * roi_height::int - Height of the ROI.
+        """
+
+        # Get the sensor size
+        sensor_w = 1280
+        sensor_h = 960
+
+        # Get the ROI from the camera
+        start_x, start_y, width, height = self.camera.get_roi()
+
+        # Calculate the absolute ROI
+        roi_x_1, roi_x_2, roi_y_1, roi_y_2 = roi_swh_to_absolute(start_x, start_y, width, height)
+
+        # Calculate the values we display in the GUI
+        offset_x, roi_width, offset_y, roi_height = roi_absolute_to_offset(roi_x_1, roi_x_2, roi_y_1, roi_y_2, sensor_w, sensor_h)
+
+        # Log values
+        logging.info(f'{self} get ROI x: ({roi_x_1}, {roi_x_2}) y: ({roi_y_1}, {roi_y_2}).')
+        logging.debug(f'ROI offset values x: ({offset_x}, {roi_width}) y: ({offset_y}, {roi_height}).')
+        logging.debug(f'ROI swh values x: ({start_x}, {start_y}) y: ({width}, {height}).')
+
+        # Return data
+        data = [CMD_CAMERA_GET_ROI, (offset_x, roi_width, offset_y, roi_height)]
         self.send(data)
 
-    def set_roi(self, roi_x_1, roi_y_1, roi_x_2, roi_y_2):
+        return offset_x, roi_width, offset_y, roi_height
 
-        logging.debug(f'{self} set roi to {roi_x_1} {roi_y_1} {roi_x_2} {roi_y_2}.')
+    def set_roi(self, offset_x, roi_width, offset_y, roi_height):
+        """Set the ROI.
+        
+        # Arguments
+        * offset_x::int - Offset from the sensor center in x.
+        * roi_width::int -  Width of the ROI.
+        * offset_y::int - Offset from the sensor center in y.
+        * roi_height::int - Height of the ROI.
+        """
+
+        # Get the size of the sensor
+        sensor_w = 1280
+        sensor_h = 960
+
+        # Calculate the absolute size of the ROI
+        roi_x_1, roi_x_2, roi_y_1, roi_y_2 = roi_offset_to_absolute(offset_x, roi_width, offset_y, roi_height, sensor_w, sensor_h)
+
+        # Check the size
+        assert roi_x_1 >= 0 and roi_x_1 <= sensor_w, 'roi_x_1 out of range.'
+        assert roi_x_2 >= 0 and roi_x_2 <= sensor_w, 'roi_x_2 out of range.'
+        assert roi_y_1 >= 0 and roi_y_1 <= sensor_h, 'roi_y_1 out of range.'
+        assert roi_y_2 >= 0 and roi_y_2 <= sensor_h, 'roi_y_2 out of range.'
+
+        # Calculate the width and height of the ROI
+        start_x, start_y, width, height = roi_absolute_to_swh(roi_x_1, roi_x_2, roi_y_1, roi_y_2)
+
+        # Log values
+        logging.info(f'{self} set ROI to x: ({roi_x_1}, {roi_x_2}) y: ({roi_y_1}, {roi_y_2}).')
+        logging.debug(f'ROI offset values x: ({offset_x}, {roi_width}) y: ({offset_y}, {roi_height}).')
+        logging.debug(f'ROI swh values x: ({start_x}, {start_y}) y: ({width}, {height}).')
 
         # Stop video recording to prevent crash
         self.camera.stop_video_capture()
-        # Set ROI
-        self.camera.set_roi(roi_x_1, roi_y_1, roi_x_2, roi_y_2, image_type=ASI_IMG_RAW8)
+        # Update ROI
+        self.camera.set_roi(start_x, start_y, width, height, image_type=ASI_IMG_RAW8)
         # Continue recording
         self.camera.start_video_capture()
 
@@ -260,19 +356,29 @@ class CameraInterface(Interface):
         self.image_label.setPixmap(qpixmap)
 
     def display_exp_time(self, val):
-        """Display the exposure time"""
+        """Display the exposure time in the GUI. """
 
         logging.debug(f'{self} received exposure {val * 1e6} us from {self.subprocess}.')
         self.exp_time_input.setText(str(val))
 
-    def update_roi(self, roi_x_start, roi_x_width, roi_y_start, roi_y_height):
-        #roi_x_start, self.roi_x_width, self.roi_y_start, self.roi_y_height
+    def update_roi(self, offset_x, roi_width, offset_y, roi_height):
+        """Update the GUI with current ROI values.
         
-        logging.debug(f'{self} received roi {roi_x_start}, {roi_x_width}, {roi_y_start}, {roi_y_height} from {self.subprocess}.')
-        self.roi_inputs[0].setText(str(roi_x_start))
-        self.roi_inputs[1].setText(str(roi_x_width))
-        self.roi_inputs[2].setText(str(roi_y_start))
-        self.roi_inputs[3].setText(str(roi_y_height))
+        # Arguments
+        * offset_x::int - Offset from the sensor center in x.
+        * roi_width::int -  Width of the ROI.
+        * offset_y::int - Offset from the sensor center in y.
+        * roi_height::int - Height of the ROI.
+        """
+        
+        # Log values
+        logging.debug(f'{self} updates ROI to {offset_x}, {roi_width}, {offset_y}, {roi_height}.')
+
+        # Update GUI
+        self.roi_inputs[0].setValue(offset_x)
+        self.roi_inputs[1].setValue(roi_width)
+        self.roi_inputs[2].setValue(offset_y)
+        self.roi_inputs[3].setValue(roi_height)
 
     def get_exp_time(self):
         """Query the exposure time from the subprocess. """
@@ -286,12 +392,18 @@ class CameraInterface(Interface):
         logging.debug(f'{self} setting exposure time to {val * 1e6} us.')
         self.com_queue.put((CMD_CAMERA_SET_EXP, val))
     
-    def set_roi(self, roi_x_1, roi_y_1, roi_x_2, roi_y_2):
-        """Set the ROI. """
+    def set_roi(self, offset_x, roi_width, offset_y, roi_height):
+        """Set the ROI. 
 
-        roi = (roi_x_1, roi_y_1, roi_x_2, roi_y_2)
+        # Arguments
+        * offset_x::int - Offset from the sensor center in x.
+        * roi_width::int -  Width of the ROI.
+        * offset_y::int - Offset from the sensor center in y.
+        * roi_height::int - Height of the ROI.
+        """
 
-        logging.debug(f'{self} setting ROI to {roi}')
+        roi = (offset_x, roi_width, offset_y, roi_height)
+
         self.com_queue.put((CMD_CAMERA_SET_ROI, roi))
 
     def get_roi(self):

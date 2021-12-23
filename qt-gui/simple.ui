@@ -30,53 +30,17 @@
     </item>
     <item>
      <layout class="QGridLayout" name="gridLayout">
-      <item row="1" column="1">
-       <widget class="QLineEdit" name="exp_time_input">
-        <property name="maximumSize">
-         <size>
-          <width>100</width>
-          <height>16777215</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="1">
-       <widget class="QLineEdit" name="roi_y_start">
-        <property name="maximumSize">
-         <size>
-          <width>100</width>
-          <height>16777215</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-      <item row="8" column="1">
-       <spacer name="verticalSpacer">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>20</width>
-          <height>40</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item row="3" column="0">
-       <widget class="QPushButton" name="StreamingButton">
+      <item row="5" column="0">
+       <widget class="QLabel" name="label_3">
         <property name="text">
-         <string>Start Stream</string>
+         <string>ROI x width</string>
         </property>
        </widget>
       </item>
-      <item row="4" column="1">
-       <widget class="QLineEdit" name="roi_x_start">
-        <property name="maximumSize">
-         <size>
-          <width>100</width>
-          <height>16777215</height>
-         </size>
+      <item row="6" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>ROI y offset</string>
         </property>
        </widget>
       </item>
@@ -84,16 +48,6 @@
        <widget class="QPushButton" name="RecordingButton">
         <property name="text">
          <string>Start Recording</string>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="1">
-       <widget class="QLineEdit" name="roi_x_width">
-        <property name="maximumSize">
-         <size>
-          <width>100</width>
-          <height>16777215</height>
-         </size>
         </property>
        </widget>
       </item>
@@ -110,8 +64,28 @@
         </property>
        </widget>
       </item>
-      <item row="7" column="1">
-       <widget class="QLineEdit" name="roi_y_height">
+      <item row="7" column="0">
+       <widget class="QLabel" name="label_5">
+        <property name="text">
+         <string>ROI y height</string>
+        </property>
+       </widget>
+      </item>
+      <item row="12" column="1">
+       <spacer name="verticalSpacer">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="exp_time_input">
         <property name="maximumSize">
          <size>
           <width>100</width>
@@ -120,31 +94,69 @@
         </property>
        </widget>
       </item>
+      <item row="3" column="0">
+       <widget class="QPushButton" name="StreamingButton">
+        <property name="text">
+         <string>Start Stream</string>
+        </property>
+       </widget>
+      </item>
       <item row="4" column="0">
        <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>ROI x start</string>
+         <string>ROI x offset</string>
         </property>
        </widget>
       </item>
-      <item row="5" column="0">
-       <widget class="QLabel" name="label_3">
-        <property name="text">
-         <string>ROI x width</string>
+      <item row="4" column="1">
+       <widget class="QSpinBox" name="roi_offset_x">
+        <property name="minimum">
+         <number>-640</number>
+        </property>
+        <property name="maximum">
+         <number>640</number>
         </property>
        </widget>
       </item>
-      <item row="6" column="0">
-       <widget class="QLabel" name="label_4">
-        <property name="text">
-         <string>ROI y start</string>
+      <item row="5" column="1">
+       <widget class="QSpinBox" name="roi_width">
+        <property name="minimum">
+         <number>88</number>
+        </property>
+        <property name="maximum">
+         <number>1280</number>
+        </property>
+        <property name="singleStep">
+         <number>8</number>
+        </property>
+        <property name="value">
+         <number>1280</number>
         </property>
        </widget>
       </item>
-      <item row="7" column="0">
-       <widget class="QLabel" name="label_5">
-        <property name="text">
-         <string>ROI y height</string>
+      <item row="6" column="1">
+       <widget class="QSpinBox" name="roi_offset_y">
+        <property name="minimum">
+         <number>-480</number>
+        </property>
+        <property name="maximum">
+         <number>480</number>
+        </property>
+       </widget>
+      </item>
+      <item row="7" column="1">
+       <widget class="QSpinBox" name="roi_height">
+        <property name="minimum">
+         <number>2</number>
+        </property>
+        <property name="maximum">
+         <number>960</number>
+        </property>
+        <property name="singleStep">
+         <number>2</number>
+        </property>
+        <property name="value">
+         <number>960</number>
         </property>
        </widget>
       </item>
