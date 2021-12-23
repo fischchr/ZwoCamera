@@ -17,10 +17,19 @@
    <layout class="QHBoxLayout" name="horizontalLayout">
     <item>
      <widget class="QLabel" name="imageLabel">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
       <property name="minimumSize">
        <size>
-        <width>64</width>
-        <height>64</height>
+        <width>640</width>
+        <height>480</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>9999999</width>
+        <height>10000003</height>
        </size>
       </property>
       <property name="text">
@@ -30,6 +39,16 @@
     </item>
     <item>
      <layout class="QGridLayout" name="gridLayout">
+      <item row="4" column="1">
+       <widget class="QSpinBox" name="roi_offset_x">
+        <property name="minimum">
+         <number>-640</number>
+        </property>
+        <property name="maximum">
+         <number>640</number>
+        </property>
+       </widget>
+      </item>
       <item row="5" column="0">
        <widget class="QLabel" name="label_3">
         <property name="text">
@@ -51,6 +70,22 @@
         </property>
        </widget>
       </item>
+      <item row="7" column="1">
+       <widget class="QSpinBox" name="roi_height">
+        <property name="minimum">
+         <number>2</number>
+        </property>
+        <property name="maximum">
+         <number>960</number>
+        </property>
+        <property name="singleStep">
+         <number>2</number>
+        </property>
+        <property name="value">
+         <number>960</number>
+        </property>
+       </widget>
+      </item>
       <item row="1" column="0">
        <widget class="QLabel" name="label">
         <property name="maximumSize">
@@ -68,6 +103,22 @@
        <widget class="QLabel" name="label_5">
         <property name="text">
          <string>ROI y height</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
+       <widget class="QSpinBox" name="roi_width">
+        <property name="minimum">
+         <number>88</number>
+        </property>
+        <property name="maximum">
+         <number>1280</number>
+        </property>
+        <property name="singleStep">
+         <number>8</number>
+        </property>
+        <property name="value">
+         <number>1280</number>
         </property>
        </widget>
       </item>
@@ -108,32 +159,6 @@
         </property>
        </widget>
       </item>
-      <item row="4" column="1">
-       <widget class="QSpinBox" name="roi_offset_x">
-        <property name="minimum">
-         <number>-640</number>
-        </property>
-        <property name="maximum">
-         <number>640</number>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="1">
-       <widget class="QSpinBox" name="roi_width">
-        <property name="minimum">
-         <number>88</number>
-        </property>
-        <property name="maximum">
-         <number>1280</number>
-        </property>
-        <property name="singleStep">
-         <number>8</number>
-        </property>
-        <property name="value">
-         <number>1280</number>
-        </property>
-       </widget>
-      </item>
       <item row="6" column="1">
        <widget class="QSpinBox" name="roi_offset_y">
         <property name="minimum">
@@ -141,22 +166,6 @@
         </property>
         <property name="maximum">
          <number>480</number>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="1">
-       <widget class="QSpinBox" name="roi_height">
-        <property name="minimum">
-         <number>2</number>
-        </property>
-        <property name="maximum">
-         <number>960</number>
-        </property>
-        <property name="singleStep">
-         <number>2</number>
-        </property>
-        <property name="value">
-         <number>960</number>
         </property>
        </widget>
       </item>

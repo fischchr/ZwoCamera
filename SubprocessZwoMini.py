@@ -27,7 +27,7 @@ def roi_absolute_to_offset(roi_x_1, roi_x_2, roi_y_1, roi_y_2, sensor_w, sensor_
     roi_width = roi_x_2 - roi_x_1
     offset_x = roi_x_1 - int(sensor_w / 2) + int(roi_width / 2)
     roi_height = roi_y_2 - roi_y_1
-    offset_y = roi_y_1 - int(sensor_h / 2) + int(roi_height / 2)
+    offset_y = int(sensor_h / 2) - int(roi_height / 2) - roi_y_1
     
 
     return offset_x, roi_width, offset_y, roi_height
@@ -35,7 +35,7 @@ def roi_absolute_to_offset(roi_x_1, roi_x_2, roi_y_1, roi_y_2, sensor_w, sensor_
 def roi_offset_to_absolute(offset_x, roi_width, offset_y, roi_height, sensor_w, sensor_h):
     roi_x_1 = int(sensor_w / 2) - int(roi_width / 2) + offset_x
     roi_x_2 = roi_x_1 + roi_width
-    roi_y_1 = int(sensor_h / 2) - int(roi_height / 2) + offset_y
+    roi_y_1 = int(sensor_h / 2) - int(roi_height / 2) - offset_y
     roi_y_2 = roi_y_1 + roi_height
 
     return roi_x_1, roi_x_2, roi_y_1, roi_y_2
@@ -149,6 +149,8 @@ class CameraSubprocess(Subprocess):
 
         self._mode = None
         self._camera_type = camera_type
+        self._sensor_w = None
+        self._sensor_h = None
     
     def run(self):
         """Extend the event loop of subprocess. """
@@ -156,7 +158,13 @@ class CameraSubprocess(Subprocess):
         # Initialize the camera
         self.camera = ZwoCamera(self._camera_type)
 
-        self.camera.set_roi(0, 0, 1280, 960, image_type=ASI_IMG_RAW8)
+        # Get the camera info
+        info = self.camera.get_camera_property()
+        self._sensor_w = info['MaxWidth']
+        self._sensor_h = info['MaxHeight']
+
+        # Set camera
+        self.camera.set_roi(0, 0, self._sensor_w, self._sensor_h, image_type=ASI_IMG_RAW8)
         self.camera.exp_time = 1e-3
         self.camera.highspeed = False
         if self.camera.is_cooled:
@@ -241,10 +249,6 @@ class CameraSubprocess(Subprocess):
         * roi_height::int - Height of the ROI.
         """
 
-        # Get the sensor size
-        sensor_w = 1280
-        sensor_h = 960
-
         # Get the ROI from the camera
         start_x, start_y, width, height = self.camera.get_roi()
 
@@ -252,7 +256,7 @@ class CameraSubprocess(Subprocess):
         roi_x_1, roi_x_2, roi_y_1, roi_y_2 = roi_swh_to_absolute(start_x, start_y, width, height)
 
         # Calculate the values we display in the GUI
-        offset_x, roi_width, offset_y, roi_height = roi_absolute_to_offset(roi_x_1, roi_x_2, roi_y_1, roi_y_2, sensor_w, sensor_h)
+        offset_x, roi_width, offset_y, roi_height = roi_absolute_to_offset(roi_x_1, roi_x_2, roi_y_1, roi_y_2, self._sensor_w, self._sensor_h)
 
         # Log values
         logging.info(f'{self} get ROI x: ({roi_x_1}, {roi_x_2}) y: ({roi_y_1}, {roi_y_2}).')
@@ -275,18 +279,14 @@ class CameraSubprocess(Subprocess):
         * roi_height::int - Height of the ROI.
         """
 
-        # Get the size of the sensor
-        sensor_w = 1280
-        sensor_h = 960
-
         # Calculate the absolute size of the ROI
-        roi_x_1, roi_x_2, roi_y_1, roi_y_2 = roi_offset_to_absolute(offset_x, roi_width, offset_y, roi_height, sensor_w, sensor_h)
+        roi_x_1, roi_x_2, roi_y_1, roi_y_2 = roi_offset_to_absolute(offset_x, roi_width, offset_y, roi_height, self._sensor_w, self._sensor_h)
 
         # Check the size
-        assert roi_x_1 >= 0 and roi_x_1 <= sensor_w, 'roi_x_1 out of range.'
-        assert roi_x_2 >= 0 and roi_x_2 <= sensor_w, 'roi_x_2 out of range.'
-        assert roi_y_1 >= 0 and roi_y_1 <= sensor_h, 'roi_y_1 out of range.'
-        assert roi_y_2 >= 0 and roi_y_2 <= sensor_h, 'roi_y_2 out of range.'
+        assert roi_x_1 >= 0 and roi_x_1 <= self._sensor_w, 'roi_x_1 out of range.'
+        assert roi_x_2 >= 0 and roi_x_2 <= self._sensor_w, 'roi_x_2 out of range.'
+        assert roi_y_1 >= 0 and roi_y_1 <= self._sensor_h, 'roi_y_1 out of range.'
+        assert roi_y_2 >= 0 and roi_y_2 <= self._sensor_h, 'roi_y_2 out of range.'
 
         # Calculate the width and height of the ROI
         start_x, start_y, width, height = roi_absolute_to_swh(roi_x_1, roi_x_2, roi_y_1, roi_y_2)
@@ -346,10 +346,23 @@ class CameraInterface(Interface):
         # Get image size
         w, h = pil_image.size
 
+        # Get the aspect ratio
+        roi_w = self.roi_inputs[1].value()
+        roi_h = self.roi_inputs[3].value()
+
+        # Get the size of the output
+        output_w = 640
+        output_h = 480 #int(640 * roi_h / roi_w)
+        #print(roi_h, roi_w, output_h)
+
+        pil_image = pil_image.resize((output_w, output_h))
+        w, h = pil_image.size
+        #print(w, h)
+
         # Get byte representation
         byte_data = pil_image.tobytes("raw", "L")
         # Generate QImage object
-        qimage = QImage(byte_data, w, h, QImage.Format_Grayscale8)
+        qimage = QImage(byte_data, output_w, output_h, QImage.Format_Grayscale8)
         # Transform it to QPixmap object
         qpixmap = QPixmap.fromImage(qimage)
         # Display the image

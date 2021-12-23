@@ -105,8 +105,8 @@ class MainWindow(QMainWindow):
 
         # Initialize the camera interface
         
-        self.camera_interface = CameraInterface('ZWO ASI174MM-Cool', self.imageLabel, self.exp_time_input, self.res_queue, roi_inputs)
-        #self.camera_interface = CameraInterface('ZWO ASI120MM Mini', self.imageLabel, self.exp_time_input, self.res_queue, roi_inputs)
+        #self.camera_interface = CameraInterface('ZWO ASI174MM-Cool', self.imageLabel, self.exp_time_input, self.res_queue, roi_inputs)
+        self.camera_interface = CameraInterface('ZWO ASI120MM Mini', self.imageLabel, self.exp_time_input, self.res_queue, roi_inputs)
 
         # Create the interface manager
         self.interface_manager = InterfaceManager(self.camera_interface)
