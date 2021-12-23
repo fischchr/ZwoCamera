@@ -104,7 +104,9 @@ class MainWindow(QMainWindow):
         self.res_queue = Queue()
 
         # Initialize the camera interface
-        self.camera_interface = CameraInterface(self.imageLabel, self.exp_time_input, self.res_queue, roi_inputs)
+        
+        self.camera_interface = CameraInterface('ZWO ASI174MM-Cool', self.imageLabel, self.exp_time_input, self.res_queue, roi_inputs)
+        #self.camera_interface = CameraInterface('ZWO ASI120MM Mini', self.imageLabel, self.exp_time_input, self.res_queue, roi_inputs)
 
         # Create the interface manager
         self.interface_manager = InterfaceManager(self.camera_interface)
@@ -127,6 +129,7 @@ class MainWindow(QMainWindow):
         ### Start subprocesses ###
         # Start camera process
         self.start_subprocess(CAMERA_ID)
+        logging.debug('Querrying camera settings for the GUI')
         self.get_exp_time()
         self.get_camera_roi()
         self.set_camera_not_recording()

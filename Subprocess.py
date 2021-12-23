@@ -40,6 +40,7 @@ class Subprocess(Process):
         logging.info(f'Starting event loop of {self}')
 
         while True:
+            t1 = time.time()
             # Poll the command queue for self._timeout
             res = self.receive()
 
@@ -54,6 +55,9 @@ class Subprocess(Process):
 
             # Run additional code once per iteration
             self.inloop()
+            t2 = time.time()
+            if t2 - t1 < self._timeout:
+                time.sleep(self._timeout - (t2 - t1))
 
         logging.info(f'Stopped event loop of {self}')
 

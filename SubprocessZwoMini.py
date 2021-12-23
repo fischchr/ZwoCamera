@@ -1,21 +1,21 @@
-from zwoasi import init, Camera, ASI_EXPOSURE, ASI_HIGH_SPEED_MODE, ASI_IMG_RAW8
+from zwoasi import init, Camera, ASI_EXPOSURE, ASI_HIGH_SPEED_MODE, ASI_IMG_RAW8, ASI_COOLER_ON, ASI_FAN_ON, ASI_TEMPERATURE, ASI_TARGET_TEMP, ASI_IMG_RAW16
 from Subprocess import Subprocess, Interface
 from SubprocessHeader import *
 from multiprocessing import Queue
 from PyQt5.QtGui import QImage, QPixmap
 from PIL  import Image
 
-class ZwoMini(Camera):
+
+class ZwoCamera(Camera):
     """Extension of zwoasi.Camera class. """
 
-    def __init__(self):
+    def __init__(self, camera_name: str):
         # Load the DLL
         self.load_lib()
 
         # Initialize the camera
-        super(ZwoMini, self).__init__('ZWO ASI120MM Mini')
+        super(ZwoCamera, self).__init__(camera_name)
 
-        # 
         self._exp_time = None
         self._highspeed = False
         
@@ -55,22 +55,68 @@ class ZwoMini(Camera):
 
         self.set_control_value(ASI_HIGH_SPEED_MODE, bool(highspeed))
 
+    @property
+    def is_cooled(self):
+        return self.get_camera_property()['IsCoolerCam']
+
+    def enable_cooler(self):
+        if self.is_cooled:
+            self.set_control_value(ASI_COOLER_ON, 1)
+            self.set_control_value(ASI_FAN_ON, 1)
+            logging.debug(f'{self}: Enabeling cooler')
+        else:
+            logging.info(f'{self} is not cooled')
+
+    def disable_cooler(self):
+        if self.is_cooled:
+            self.set_control_value(ASI_COOLER_ON, 0)
+            self.set_control_value(ASI_FAN_ON, 0)
+            logging.debug(f'{self}: Disabeling cooler')
+        else:
+            logging.info(f'{self} is not cooled')
+
+    @property
+    def temperature(self):
+        if self.is_cooled:
+            # Get the temperature (x10)
+            t = self.get_control_value(ASI_TEMPERATURE)[0]
+            logging.debug(f'Getting temperature')
+            return t / 10
+        else:
+            logging.info(f'{self} is not cooled')
+
+    @temperature.setter
+    def temperature(self, t: float):
+        if self.is_cooled:
+            assert t > -40 and t < 20, 'Temperature out of range'
+            self.set_control_value(ASI_TARGET_TEMP, t)
+            logging.debug(f'Setting temperature to {t}')
+        else:
+            logging.info(f'{self} is not cooled')
+
+
 
 class CameraSubprocess(Subprocess):
     """Implentation of a subprocess for running the ZWO mini camera. """
-    def __init__(self, uid: int, com_queue: Queue, res_queue: Queue):
+    def __init__(self, uid: int, camera_type: str, com_queue: Queue, res_queue: Queue):
+        """Camera type: ZWO ASI120MM Mini or ZWO ASI174MM-Cool"""
         super().__init__(uid, com_queue, res_queue)
 
         self._mode = None
-
+        self._camera_type = camera_type
+    
     def run(self):
         """Extend the event loop of subprocess. """
 
         # Initialize the camera
-        self.camera = ZwoMini()
+        self.camera = ZwoCamera(self._camera_type)
+
         self.camera.set_roi(0, 0, 1280, 960, image_type=ASI_IMG_RAW8)
-        self.camera.exposure_time = 1e-3
-        self.camera.highspeed = True
+        self.camera.exp_time = 1e-3
+        self.camera.highspeed = False
+        if self.camera.is_cooled:
+            self.camera.enable_cooler()
+            self.camera.temperature = 0
 
         # Enable video mode
         self.camera.start_video_capture()
@@ -88,7 +134,7 @@ class CameraSubprocess(Subprocess):
         
         if self._mode == CMD_CAMERA_REC_MODE:
             img_data = []
-            for i in range(100):
+            for i in range(1000):
                 img_data.append(self.camera.capture_video_frame())
             # Update GUI
             self.send((CMD_DISPLAY_IMAGE, img_data[-1]))    
@@ -117,7 +163,14 @@ class CameraSubprocess(Subprocess):
         elif res[0] == CMD_CAMERA_GET_ROI:
             self.get_roi()
         elif res[0] == CMD_CAMERA_SET_ROI:
+            #self.camera.stop_video_capture()
             self.set_roi(*res[1])
+            #self.camera.start_video_capture()
+        elif res[0] == CMD_CAMERA_GET_TEMP:
+            raise NotImplementedError
+        elif res[0] == CMD_CAMERA_SET_TEMP:
+            raise NotImplementedError
+
         
     def get_exposure_time(self):
         """Get the exposure time from the camera and put the result on the res_queue. """
@@ -130,6 +183,7 @@ class CameraSubprocess(Subprocess):
         """Set the exposure time (in seconds) and send the actual set value back. """
         
         logging.debug(f'{self} sets exposure time.')
+        #self.camera.stop_video_capture()
         self.camera.exp_time = val
 
         self.get_exposure_time()
@@ -137,6 +191,7 @@ class CameraSubprocess(Subprocess):
     def get_roi(self):
 
         logging.debug(f'{self} get roi.')
+        
         roi_x_start, roi_y_start, roi_x_width, roi_y_height = self.camera.get_roi()
         data = [CMD_CAMERA_GET_ROI, (roi_x_start, roi_x_width, roi_y_start, roi_y_height)]
         self.send(data)
@@ -144,12 +199,18 @@ class CameraSubprocess(Subprocess):
     def set_roi(self, roi_x_1, roi_y_1, roi_x_2, roi_y_2):
 
         logging.debug(f'{self} set roi to {roi_x_1} {roi_y_1} {roi_x_2} {roi_y_2}.')
+
+        # Stop video recording to prevent crash
+        self.camera.stop_video_capture()
+        # Set ROI
         self.camera.set_roi(roi_x_1, roi_y_1, roi_x_2, roi_y_2, image_type=ASI_IMG_RAW8)
+        # Continue recording
+        self.camera.start_video_capture()
 
 
 class CameraInterface(Interface):
-    def __init__(self, image_label, exp_time_input, res_queue: Queue, roi_inputs: list):
-        """Constructor. """
+    def __init__(self, camera_type, image_label, exp_time_input, res_queue: Queue, roi_inputs: list):
+        """Constructor. camera_type: ZWO ASI120MM Mini or ZWO ASI174MM-Cool"""
 
         super().__init__(CAMERA_ID, res_queue)
 
@@ -162,10 +223,12 @@ class CameraInterface(Interface):
         # ROI inputs
         self.roi_inputs = roi_inputs
 
+        self._camera_type = camera_type
+
     def init_subprocess(self):
         """Overwrite the parent function for initializing the subprocess. """
 
-        return CameraSubprocess(self.uid, self.com_queue, self.res_queue)
+        return CameraSubprocess(self.uid, self._camera_type, self.com_queue, self.res_queue)
 
     def handle_data(self, data):
         """Handle data sent back from the camera subprocess. """
