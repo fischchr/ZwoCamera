@@ -6,6 +6,7 @@ from PyQt5.uic import loadUi
 import time
 import sys
 import numpy as np
+from camera_settings import CameraSettingsWindow
 #from ASICamera.testing.Subprocess import InterfaceManager
 
 
@@ -86,18 +87,16 @@ class MainWindow(QMainWindow):
 
 
         ### Initialize GUI ###
-        # Load gui
+        # Load gui of the main window
         loadUi('qt-gui/simple.ui', self)  
 
+        # Initialize all windows
+        self.asi_mini_settings = CameraSettingsWindow()
+        self.asi_mini_settings.show()
+
         # Connect elements to functions
-        self.exp_time_input.editingFinished.connect(self.set_exp_time)
         self.StreamingButton.clicked.connect(self.toggle_streaming_mode)
-        self.RecordingButton.clicked.connect(self.toggle_recording_mode)
-
-        roi_inputs = [self.roi_offset_x, self.roi_width, self.roi_offset_y, self.roi_height]
-        for input in roi_inputs:
-            input.editingFinished.connect(self.set_camera_roi)
-
+        self.RecordingButton.clicked.connect(self.toggle_recording_mode)       
 
         ### Initialize subprocesses ###
         # Create result queue which is shared by all subprocesses
@@ -106,7 +105,8 @@ class MainWindow(QMainWindow):
         # Initialize the camera interface
         
         #self.camera_interface = CameraInterface('ZWO ASI174MM-Cool', self.imageLabel, self.exp_time_input, self.res_queue, roi_inputs)
-        self.camera_interface = CameraInterface('ZWO ASI120MM Mini', self.imageLabel, self.exp_time_input, self.res_queue, roi_inputs)
+        #self.camera_interface = CameraInterface('ZWO ASI120MM Mini', self.imageLabel, self.exp_time_input, self.res_queue, roi_inputs)
+        self.camera_interface = CameraInterface('ZWO ASI120MM Mini', self.imageLabel, self.res_queue, self.asi_mini_settings)
 
         # Create the interface manager
         self.interface_manager = InterfaceManager(self.camera_interface)
@@ -129,28 +129,26 @@ class MainWindow(QMainWindow):
         ### Start subprocesses ###
         # Start camera process
         self.start_subprocess(CAMERA_ID)
-        logging.debug('Querrying camera settings for the GUI')
-        self.get_exp_time()
-        self.get_camera_roi()
+        #logging.debug('Querrying camera settings for the GUI')
+        #self.camera_interface.load_camera_settings()
+        #self.camera_interface.stop_recording()
+        #self.get_exp_time()
+        #self.get_camera_roi()
         self.set_camera_not_recording()
+        self.camera_interface.load_camera_settings()
 
 
     ### GUI functions for controlling the camera
-    def get_exp_time(self):
-        """Get the exposure time from the camera. """
+    #def get_exp_time(self):
+    #    """Get the exposure time from the camera. """
+    #
+    #    self.interface_manager[CAMERA_ID].get_exp_time()
 
-        self.interface_manager[CAMERA_ID].get_exp_time()
-
-    def set_exp_time(self):
-        """Set the exposure time of the camera. """
-        val = self.exp_time_input.text()
-        try:
-            val = float(val)
-            if val > 2e-6 and val < 5:
-                self.interface_manager[CAMERA_ID].set_exp_time(val)
-        except ValueError:
-            pass
-
+    #def set_exp_time(self):
+    #    """Set the exposure time of the camera. """
+    #
+    #    self.interface_manager[CAMERA_ID].set_exp_time()
+    
     def toggle_streaming_mode(self):
         if self.camera_mode == CMD_CAMERA_MODE_STOP or self.camera_mode == CMD_CAMERA_REC_MODE:
             self.set_camera_continuous_mode()
@@ -191,10 +189,10 @@ class MainWindow(QMainWindow):
         self.StreamingButton.setText('Start Stream')
         self.RecordingButton.setText('Stop Recording')
 
-    def get_camera_roi(self):
+    #def get_camera_roi(self):
 
-        self.interface_manager[CAMERA_ID].get_roi()
-
+    #    self.interface_manager[CAMERA_ID].get_roi()
+    """
     def set_camera_roi(self):
         logging.info('Updating ROI')
         try:
@@ -222,7 +220,7 @@ class MainWindow(QMainWindow):
             logging.info(f'{self} received error {e}')
 
         self.get_camera_roi()
-
+    """
 
     ### Handling starting and stopping of subprocesses ###
     def start_subprocess(self, uid: int):
@@ -239,6 +237,8 @@ class MainWindow(QMainWindow):
         # Stop all subprocesses
         for interface in self.interface_manager:
             interface.stop_subprocess()
+
+        self.asi_mini_settings.close()
 
         # Stop the communication worker
         self.communication_worker.stop_thread()

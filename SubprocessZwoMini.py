@@ -147,23 +147,24 @@ class CameraSubprocess(Subprocess):
         """Camera type: ZWO ASI120MM Mini or ZWO ASI174MM-Cool"""
         super().__init__(uid, com_queue, res_queue)
 
-        self._mode = None
         self._camera_type = camera_type
+
         self._sensor_w = None
         self._sensor_h = None
+
+        self._mode = None
+
     
     def run(self):
         """Extend the event loop of subprocess. """
-
-        # Initialize the camera
+        
+        # Set camera
         self.camera = ZwoCamera(self._camera_type)
 
-        # Get the camera info
         info = self.camera.get_camera_property()
         self._sensor_w = info['MaxWidth']
         self._sensor_h = info['MaxHeight']
 
-        # Set camera
         self.camera.set_roi(0, 0, self._sensor_w, self._sensor_h, image_type=ASI_IMG_RAW8)
         self.camera.exp_time = 1e-3
         self.camera.highspeed = False
@@ -247,6 +248,8 @@ class CameraSubprocess(Subprocess):
         * roi_width::int -  Width of the ROI.
         * offset_y::int - Offset from the sensor center in y.
         * roi_height::int - Height of the ROI.
+        * sensor_w::int - Width of the camera sensor.
+        * sensor_h::int - Height of the camera sensor.
         """
 
         # Get the ROI from the camera
@@ -264,10 +267,10 @@ class CameraSubprocess(Subprocess):
         logging.debug(f'ROI swh values x: ({start_x}, {start_y}) y: ({width}, {height}).')
 
         # Return data
-        data = [CMD_CAMERA_GET_ROI, (offset_x, roi_width, offset_y, roi_height)]
+        data = [CMD_CAMERA_GET_ROI, (offset_x, roi_width, offset_y, roi_height, self._sensor_w, self._sensor_h)]
         self.send(data)
 
-        return offset_x, roi_width, offset_y, roi_height
+        #return offset_x, roi_width, offset_y, roi_height
 
     def set_roi(self, offset_x, roi_width, offset_y, roi_height):
         """Set the ROI.
@@ -303,23 +306,31 @@ class CameraSubprocess(Subprocess):
         # Continue recording
         self.camera.start_video_capture()
 
+    def get_sensor_size(self):
+        return (self._sensor_w, self._sensor_h)
+
 
 class CameraInterface(Interface):
-    def __init__(self, camera_type, image_label, exp_time_input, res_queue: Queue, roi_inputs: list):
+    def __init__(self, camera_type, image_label, res_queue: Queue, settings_window):
         """Constructor. camera_type: ZWO ASI120MM Mini or ZWO ASI174MM-Cool"""
 
         super().__init__(CAMERA_ID, res_queue)
 
         # Initialize GUI elements for controling the camera
-        self.exp_time_input = exp_time_input
 
         # Initialize the GUI element for displaying the camera image
         self.image_label = image_label
 
-        # ROI inputs
-        self.roi_inputs = roi_inputs
+        # Settings window
+        self.settings_window = settings_window
+        self.settings_window.connect_signals(self.set_exp_time, self.set_roi)
 
+        # Camera time
         self._camera_type = camera_type
+
+    def load_camera_settings(self):
+        self.get_exp_time()
+        self.get_roi()
 
     def init_subprocess(self):
         """Overwrite the parent function for initializing the subprocess. """
@@ -347,8 +358,7 @@ class CameraInterface(Interface):
         w, h = pil_image.size
 
         # Get the aspect ratio
-        roi_w = self.roi_inputs[1].value()
-        roi_h = self.roi_inputs[3].value()
+        #(_, roi_w, _, roi_h) = self.settings_window.get_roi_values()
 
         # Get the size of the output
         output_w = 640
@@ -372,9 +382,9 @@ class CameraInterface(Interface):
         """Display the exposure time in the GUI. """
 
         logging.debug(f'{self} received exposure {val * 1e6} us from {self.subprocess}.')
-        self.exp_time_input.setText(str(val))
+        self.settings_window.set_exp_time(val)
 
-    def update_roi(self, offset_x, roi_width, offset_y, roi_height):
+    def update_roi(self, offset_x, roi_width, offset_y, roi_height, sensor_w, sensor_h):
         """Update the GUI with current ROI values.
         
         # Arguments
@@ -382,16 +392,17 @@ class CameraInterface(Interface):
         * roi_width::int -  Width of the ROI.
         * offset_y::int - Offset from the sensor center in y.
         * roi_height::int - Height of the ROI.
+        * sensor_w::int - Width of the camera sensor.
+        * sensor_h::int - Height of the camera sensor.
         """
         
         # Log values
         logging.debug(f'{self} updates ROI to {offset_x}, {roi_width}, {offset_y}, {roi_height}.')
 
+
         # Update GUI
-        self.roi_inputs[0].setValue(offset_x)
-        self.roi_inputs[1].setValue(roi_width)
-        self.roi_inputs[2].setValue(offset_y)
-        self.roi_inputs[3].setValue(roi_height)
+        self.settings_window.set_roi_values(offset_x, roi_width, offset_y, roi_height, sensor_w, sensor_h)
+        
 
     def get_exp_time(self):
         """Query the exposure time from the subprocess. """
@@ -399,13 +410,17 @@ class CameraInterface(Interface):
         logging.debug(f'{self} querying exposure time.')
         self.com_queue.put((CMD_CAMERA_GET_EXP, ))
 
-    def set_exp_time(self, val):
+    def set_exp_time(self):
         """Set the exposure time of the camera. """
 
-        logging.debug(f'{self} setting exposure time to {val * 1e6} us.')
-        self.com_queue.put((CMD_CAMERA_SET_EXP, val))
+        try:
+            exp_time = self.settings_window.get_exp_time()
+            logging.debug(f'{self} setting exposure time to {exp_time * 1e6} us.')
+            self.com_queue.put((CMD_CAMERA_SET_EXP, exp_time))
+        except ValueError as e:
+            logging.info(f'{e}')
     
-    def set_roi(self, offset_x, roi_width, offset_y, roi_height):
+    def set_roi(self):
         """Set the ROI. 
 
         # Arguments
@@ -414,11 +429,16 @@ class CameraInterface(Interface):
         * offset_y::int - Offset from the sensor center in y.
         * roi_height::int - Height of the ROI.
         """
+        try:
+            roi = self.settings_window.get_roi_values()
+            #print(roi)
 
-        roi = (offset_x, roi_width, offset_y, roi_height)
+            self.com_queue.put((CMD_CAMERA_SET_ROI, roi))
+        except AssertionError as e:
+            print(e)
 
-        self.com_queue.put((CMD_CAMERA_SET_ROI, roi))
-
+        self.get_roi()
+        
     def get_roi(self):
         """Get the ROI. """
 
