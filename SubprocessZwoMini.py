@@ -311,22 +311,56 @@ class CameraSubprocess(Subprocess):
 
 
 class CameraInterface(Interface):
-    def __init__(self, camera_type, image_label, res_queue: Queue, settings_window):
+    def __init__(self, camera_type, image_label, res_queue: Queue, settings_window, streaming_button, rec_button, settings_button):
         """Constructor. camera_type: ZWO ASI120MM Mini or ZWO ASI174MM-Cool"""
 
-        super().__init__(CAMERA_ID, res_queue)
+        if camera_type == 'ZWO ASI120MM Mini':
+            ID = CAMERA_ID
+        elif camera_type == 'ZWO ASI174MM-Cool':
+            ID = COOL_CAMERA_ID
+        else:
+            raise NotImplementedError(f'{camera_type} not known.')
+
+        super().__init__(ID, res_queue)
 
         # Initialize GUI elements for controling the camera
 
         # Initialize the GUI element for displaying the camera image
         self.image_label = image_label
+        self.streaming_button = streaming_button
+        self.recording_button = rec_button
+        self.settings_button = settings_button
 
         # Settings window
         self.settings_window = settings_window
         self.settings_window.connect_signals(self.set_exp_time, self.set_roi)
 
+        # Signals
+        self.streaming_button.clicked.connect(self.toggle_streaming_mode)
+        self.recording_button.clicked.connect(self.toggle_recording_mode)     
+        self.settings_button.clicked.connect(self.toggle_settings) 
+
         # Camera time
         self._camera_type = camera_type
+
+        # Camera state
+        self._camera_state = None
+
+    def toggle_streaming_mode(self):
+        if self._camera_state == CMD_CAMERA_MODE_STOP or self._camera_state == CMD_CAMERA_REC_MODE:
+            self.set_continuous_mode()
+        else:
+            self.stop_recording()
+
+    def toggle_recording_mode(self):
+        if self._camera_state == CMD_CAMERA_MODE_STOP or self._camera_state == CMD_CAMERA_CONTINOUS_MODE:
+            self.set_rec_mode()
+        else:
+            self.stop_recording()
+
+    def toggle_settings(self):
+        if not self.settings_window.isVisible():
+            self.settings_window.show()
 
     def load_camera_settings(self):
         self.get_exp_time()
@@ -438,7 +472,7 @@ class CameraInterface(Interface):
             print(e)
 
         self.get_roi()
-        
+
     def get_roi(self):
         """Get the ROI. """
 
@@ -446,10 +480,40 @@ class CameraInterface(Interface):
         self.com_queue.put((CMD_CAMERA_GET_ROI, ))
 
     def stop_recording(self):
-        self.com_queue.put((CMD_CAMERA_MODE_STOP, ))
+        logging.info('Stopping all recording')
 
+        # Stop camera
+        self._camera_state = CMD_CAMERA_MODE_STOP
+        self._update_state()
+
+        # Reset buttons
+        self.streaming_button.setText('Start Stream')
+        self.recording_button.setText('Start Recording')
+        
     def set_continuous_mode(self):
-        self.com_queue.put((CMD_CAMERA_CONTINOUS_MODE, ))
+
+        logging.info('Starting continuous video streaming')
+
+        # Start streaming
+        self._camera_state = CMD_CAMERA_CONTINOUS_MODE
+        self._update_state()
+
+        # Set buttons
+        self.streaming_button.setText('Stop Stream')
+        self.recording_button.setText('Start Recording')
 
     def set_rec_mode(self):
-        self.com_queue.put((CMD_CAMERA_REC_MODE, ))
+
+        logging.info('Starting recording')
+
+        # Start recording
+        self._camera_state = CMD_CAMERA_REC_MODE
+        self._update_state()
+
+        # Set buttons
+        self.StreamingButton.setText('Start Stream')
+        self.RecordingButton.setText('Stop Recording')
+
+
+    def _update_state(self):
+        self.com_queue.put((self._camera_state, ))

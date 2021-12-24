@@ -2,6 +2,7 @@ import logging
 
 # IDs
 CAMERA_ID = 0xF1
+COOL_CAMERA_ID = 0xF2
 
 # Commands
 CMD_STOP_SUBPROCESS = 0x00

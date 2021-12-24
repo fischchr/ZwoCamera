@@ -14,171 +14,134 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout">
-    <item>
-     <widget class="QLabel" name="imageLabel">
-      <property name="enabled">
-       <bool>true</bool>
-      </property>
-      <property name="minimumSize">
-       <size>
-        <width>640</width>
-        <height>480</height>
-       </size>
-      </property>
-      <property name="maximumSize">
-       <size>
-        <width>9999999</width>
-        <height>10000003</height>
-       </size>
-      </property>
-      <property name="text">
-       <string>TextLabel</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <layout class="QGridLayout" name="gridLayout">
-      <item row="4" column="1">
-       <widget class="QSpinBox" name="roi_offset_x">
-        <property name="minimum">
-         <number>-640</number>
-        </property>
-        <property name="maximum">
-         <number>640</number>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="0">
-       <widget class="QLabel" name="label_3">
-        <property name="text">
-         <string>ROI x width</string>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="0">
-       <widget class="QLabel" name="label_4">
-        <property name="text">
-         <string>ROI y offset</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1">
-       <widget class="QPushButton" name="RecordingButton">
-        <property name="text">
-         <string>Start Recording</string>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="1">
-       <widget class="QSpinBox" name="roi_height">
-        <property name="minimum">
-         <number>2</number>
-        </property>
-        <property name="maximum">
-         <number>960</number>
-        </property>
-        <property name="singleStep">
-         <number>2</number>
-        </property>
-        <property name="value">
-         <number>960</number>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label">
-        <property name="maximumSize">
-         <size>
-          <width>175</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="text">
-         <string>Exposure time (s)</string>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="0">
-       <widget class="QLabel" name="label_5">
-        <property name="text">
-         <string>ROI y height</string>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="1">
-       <widget class="QSpinBox" name="roi_width">
-        <property name="minimum">
-         <number>88</number>
-        </property>
-        <property name="maximum">
-         <number>1280</number>
-        </property>
-        <property name="singleStep">
-         <number>8</number>
-        </property>
-        <property name="value">
-         <number>1280</number>
-        </property>
-       </widget>
-      </item>
-      <item row="12" column="1">
-       <spacer name="verticalSpacer">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>20</width>
-          <height>40</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item row="8" column="1">
-       <widget class="QPushButton" name="camera_settings_mini">
-        <property name="text">
-         <string>Camera settings</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QLineEdit" name="exp_time_input">
-        <property name="maximumSize">
-         <size>
-          <width>100</width>
-          <height>16777215</height>
-         </size>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QPushButton" name="StreamingButton">
-        <property name="text">
-         <string>Start Stream</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0">
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string>ROI x offset</string>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="1">
-       <widget class="QSpinBox" name="roi_offset_y">
-        <property name="minimum">
-         <number>-480</number>
-        </property>
-        <property name="maximum">
-         <number>480</number>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-   </layout>
+   <widget class="QLabel" name="imageLabelMini">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>0</y>
+      <width>640</width>
+      <height>480</height>
+     </rect>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>640</width>
+      <height>480</height>
+     </size>
+    </property>
+    <property name="maximumSize">
+     <size>
+      <width>9999999</width>
+      <height>10000003</height>
+     </size>
+    </property>
+    <property name="text">
+     <string>TextLabel</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="imageLabelCool">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>460</y>
+      <width>640</width>
+      <height>480</height>
+     </rect>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>640</width>
+      <height>480</height>
+     </size>
+    </property>
+    <property name="maximumSize">
+     <size>
+      <width>9999999</width>
+      <height>10000003</height>
+     </size>
+    </property>
+    <property name="text">
+     <string>TextLabel</string>
+    </property>
+   </widget>
+   <widget class="QGroupBox" name="groupBox">
+    <property name="geometry">
+     <rect>
+      <x>820</x>
+      <y>40</y>
+      <width>166</width>
+      <height>131</height>
+     </rect>
+    </property>
+    <property name="title">
+     <string>ASI 120MM Mini</string>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QPushButton" name="miniStreamingButton">
+       <property name="text">
+        <string>Start Stream</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="miniRecordingButton">
+       <property name="text">
+        <string>Start Recording</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="miniSettingsButton">
+       <property name="text">
+        <string>Settings ASI120MM</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QGroupBox" name="groupBox_2">
+    <property name="geometry">
+     <rect>
+      <x>820</x>
+      <y>240</y>
+      <width>157</width>
+      <height>131</height>
+     </rect>
+    </property>
+    <property name="title">
+     <string>ASI 174MM</string>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <item>
+      <widget class="QPushButton" name="coolStreamingButton">
+       <property name="text">
+        <string>Start Stream</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="coolRecordingButton">
+       <property name="text">
+        <string>Start Recording</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="coolSettingsButton">
+       <property name="text">
+        <string>Settings ASI74MM</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">

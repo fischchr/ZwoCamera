@@ -10,12 +10,14 @@ import logging
 #from ASICamera.testing.Subprocess import InterfaceManager
 
 class CameraSettingsWindow(QWidget):
-    def __init__(self):
+    def __init__(self, title: str):
         # Call constructor of parent object
         super(CameraSettingsWindow, self).__init__()
 
         # Load gui
         loadUi('qt-gui/camera_settings.ui', self) 
+
+        self.setWindowTitle(title)
 
         self.exp_time_input = self.exp_time 
 
@@ -103,10 +105,3 @@ class CameraSettingsWindow(QWidget):
         # Log values
         logging.debug(f'{self} maximum size values x: ({min_width}, {max_width}) y: ({min_height}, {max_height})')
         logging.debug(f'{self} maximum offset values x: ({min_offset_x}, {max_offset_x}) y: ({min_offset_y}, {max_offset_y})')
-
-        
-
-        
-        #self.offset_y_input.setRange(-999999, 999999)
-        #self.offset_x_input.setRange(-int(sensor_w / 2), int(sensor_w / 2) - width)
-        #self.offset_y_input.setRange(-int(sensor_h / 2), int(sensor_h / 2) - height)
