@@ -167,7 +167,7 @@ class CameraSubprocess(Subprocess):
 
         self.camera.set_roi(0, 0, self._sensor_w, self._sensor_h, image_type=ASI_IMG_RAW8)
         self.camera.exp_time = 1e-3
-        self.camera.highspeed = False
+        self.camera.highspeed = True
         if self.camera.is_cooled:
             self.camera.enable_cooler()
             self.camera.temperature = 0

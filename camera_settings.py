@@ -1,7 +1,7 @@
-from multiprocessing import process
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QWidget
-from PyQt5.QtCore import QObject, QThread, pyqtSlot, pyqtSignal
+from PyQt5.QtWidgets import QWidget
 from PyQt5.uic import loadUi
+from PyQt5 import QtCore as qtc
+
 #from PyQt5.QtGui import QImage, QPicture, QPixmap
 import time
 import sys
@@ -12,7 +12,8 @@ import logging
 class CameraSettingsWindow(QWidget):
     def __init__(self, title: str):
         # Call constructor of parent object
-        super(CameraSettingsWindow, self).__init__()
+        super(CameraSettingsWindow, self).__init__(flags=qtc.Qt.WindowStaysOnTopHint)
+        #print(qtc.Qt.WindowStaysOnTopHint)
 
         # Load gui
         loadUi('qt-gui/camera_settings.ui', self) 
