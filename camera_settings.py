@@ -22,13 +22,16 @@ class CameraSettingsWindow(QWidget):
 
         self.exp_time_input = self.exp_time 
 
-    def connect_signals(self, f_exp_time_change, f_roi_change):
+
+    def connect_signals(self, f_exp_time_change, f_roi_change, f_temperature_change):
         self.exp_time_input.editingFinished.connect(f_exp_time_change)
 
         self.offset_x_input.editingFinished.connect(f_roi_change)
         self.width_input.editingFinished.connect(f_roi_change)
         self.offset_y_input.editingFinished.connect(f_roi_change)
         self.height_input.editingFinished.connect(f_roi_change)
+
+        self.temperature_input.editingFinished.connect(f_temperature_change)
 
     def get_exp_time(self):
 
@@ -106,3 +109,18 @@ class CameraSettingsWindow(QWidget):
         # Log values
         logging.debug(f'{self} maximum size values x: ({min_width}, {max_width}) y: ({min_height}, {max_height})')
         logging.debug(f'{self} maximum offset values x: ({min_offset_x}, {max_offset_x}) y: ({min_offset_y}, {max_offset_y})')
+
+    def get_temperature(self):
+        temperature = self.temperature_input.value()
+        return temperature
+
+    def update_temperature(self, val):
+        # Enable the GUI elements if they are not yet enabled
+        if not self.set_temperature_label.isEnabled():
+            self.set_temperature_label.setEnabled(True)
+            self.actual_temperature_label.setEnabled(True)
+            self.temperature_input.setEnabled(True)
+            self.temperature_label.setEnabled(True)
+
+        # Update temperature display
+        self.temperature_label.setText(f'{val}°C')

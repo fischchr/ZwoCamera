@@ -154,6 +154,9 @@ class CameraSubprocess(Subprocess):
 
         self._mode = None
 
+        # Timer for updating the GUI regularly
+        self._update_timer = 0
+
     
     def run(self):
         """Extend the event loop of subprocess. """
@@ -198,6 +201,9 @@ class CameraSubprocess(Subprocess):
             img_data = self.camera.capture_video_frame()
             self.send((CMD_DISPLAY_IMAGE, img_data))
 
+        # Update the GUI every 10 seconds
+        self.update_gui(10)
+
     def handle_input(self, res):
         """Overwrite the function that handles commands from the main process. """
 
@@ -219,9 +225,9 @@ class CameraSubprocess(Subprocess):
         elif res[0] == CMD_CAMERA_SET_ROI:
             self.set_roi(*res[1])
         elif res[0] == CMD_CAMERA_GET_TEMP:
-            raise NotImplementedError
+            self.get_temperature()
         elif res[0] == CMD_CAMERA_SET_TEMP:
-            raise NotImplementedError
+            self.set_temperature(res[1])
 
         
     def get_exposure_time(self):
@@ -239,6 +245,23 @@ class CameraSubprocess(Subprocess):
         self.camera.exp_time = val
 
         self.get_exposure_time()
+
+    def get_temperature(self):
+        """Get the current temperature of the camera sensor and put the result on the res_queue. """
+
+        if self.camera.is_cooled:
+            logging.debug(f'{self} reads out temperature.')
+            data = [CMD_CAMERA_GET_TEMP, self.camera.temperature]
+            self.send(data)
+
+    def set_temperature(self, val: float):
+        """Set the temperature of the camera sensor. """
+
+        if self.camera.is_cooled:
+            logging.debug(f'{self} sets temerature.')
+            self.camera.temperature = val
+
+
 
     def get_roi(self):
         """Get the ROI and trigger updating of the GUI.
@@ -309,6 +332,13 @@ class CameraSubprocess(Subprocess):
     def get_sensor_size(self):
         return (self._sensor_w, self._sensor_h)
 
+    def update_gui(self, update_rate):
+        """Get the state of the camera and update the GUI every few seconds. """
+
+        if time.time() - self._update_timer > update_rate:
+            self.get_temperature()
+            self._update_timer = time.time()
+
 
 class CameraInterface(Interface):
     def __init__(self, camera_type, image_label, res_queue: Queue, settings_window, streaming_button, rec_button, settings_button):
@@ -333,7 +363,7 @@ class CameraInterface(Interface):
 
         # Settings window
         self.settings_window = settings_window
-        self.settings_window.connect_signals(self.set_exp_time, self.set_roi)
+        self.settings_window.connect_signals(self.set_exp_time, self.set_roi, self.set_temperature)
 
         # Signals
         self.streaming_button.clicked.connect(self.toggle_streaming_mode)
@@ -382,6 +412,8 @@ class CameraInterface(Interface):
             self.display_exp_time(data[1])
         elif cmd == CMD_CAMERA_GET_ROI:
             self.update_roi(*data[1])
+        elif cmd == CMD_CAMERA_GET_TEMP:
+            self.update_temperature(data[1])
 
     def display_image(self, image_data):
         """Display an image. """
@@ -389,7 +421,7 @@ class CameraInterface(Interface):
         # Convert image to 8 bit grayscale
         pil_image = Image.fromarray(image_data, 'L')
         # Get image size
-        w, h = pil_image.size
+        #w, h = pil_image.size
 
         # Get the aspect ratio
         #(_, roi_w, _, roi_h) = self.settings_window.get_roi_values()
@@ -400,7 +432,7 @@ class CameraInterface(Interface):
         #print(roi_h, roi_w, output_h)
 
         pil_image = pil_image.resize((output_w, output_h))
-        w, h = pil_image.size
+        #w, h = pil_image.size
         #print(w, h)
 
         # Get byte representation
@@ -436,6 +468,22 @@ class CameraInterface(Interface):
 
         # Update GUI
         self.settings_window.set_roi_values(offset_x, roi_width, offset_y, roi_height, sensor_w, sensor_h)
+
+    def set_temperature(self):
+        """Set the temperature of the camera. """
+
+        try:
+            temperature = self.settings_window.get_temperature()
+            logging.debug(f'{self} setting temperature to {temperature}.')
+            self.com_queue.put((CMD_CAMERA_SET_TEMP, temperature))
+        except ValueError as e:
+            logging.info(f'{e}')
+
+    def update_temperature(self, val):
+
+        logging.debug(f'{self} updates camera temperature display to {val}.')
+
+        self.settings_window.update_temperature(val)
         
 
     def get_exp_time(self):
@@ -511,8 +559,8 @@ class CameraInterface(Interface):
         self._update_state()
 
         # Set buttons
-        self.StreamingButton.setText('Start Stream')
-        self.RecordingButton.setText('Stop Recording')
+        self.streaming_button.setText('Start Stream')
+        self.recording_button.setText('Stop Recording')
 
 
     def _update_state(self):

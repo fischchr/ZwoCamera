@@ -90,9 +90,12 @@ class MainWindow(QMainWindow):
         # Load gui of the main window
         loadUi('qt-gui/simple.ui', self)  
 
+        star_camera_name = 'ZWO ASI120MM Mini'
+        science_camera_name = 'ZWO ASI174MM-Cool'
+
         # Initialize all windows
-        self.asi_mini_settings = CameraSettingsWindow('Settings ASI120MM Mini')
-        self.asi_cool_settings = CameraSettingsWindow('Settings ASI174MM')
+        self.asi_mini_settings = CameraSettingsWindow(f'Settings {star_camera_name}')
+        self.asi_cool_settings = CameraSettingsWindow(f'Settings {science_camera_name}')
 
 
         ### Initialize subprocesses ###
@@ -100,8 +103,8 @@ class MainWindow(QMainWindow):
         self.res_queue = Queue()
 
         # Initialize the camera interfaces
-        self.mini_camera_interface = CameraInterface('ZWO ASI120MM Mini', self.imageLabelMini, self.res_queue, self.asi_mini_settings, self.miniStreamingButton, self.miniRecordingButton, self.miniSettingsButton)
-        self.cool_camera_interface = CameraInterface('ZWO ASI174MM-Cool', self.imageLabelCool, self.res_queue, self.asi_cool_settings, self.coolStreamingButton, self.coolRecordingButton, self.coolSettingsButton)
+        self.mini_camera_interface = CameraInterface(star_camera_name, self.imageLabelMini, self.res_queue, self.asi_mini_settings, self.miniStreamingButton, self.miniRecordingButton, self.miniSettingsButton)
+        self.cool_camera_interface = CameraInterface(science_camera_name, self.imageLabelCool, self.res_queue, self.asi_cool_settings, self.coolStreamingButton, self.coolRecordingButton, self.coolSettingsButton)
 
         # Create the interface manager
         self.interface_manager = InterfaceManager(self.mini_camera_interface, self.cool_camera_interface)
