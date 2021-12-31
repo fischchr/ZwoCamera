@@ -5,6 +5,7 @@ from multiprocessing import Queue
 from PyQt5.QtGui import QImage, QPixmap
 from PIL  import Image
 import time
+from sys import platform
 
 
 def roi_absolute_to_swh(roi_x_1, roi_x_2, roi_y_1, roi_y_2):
@@ -67,7 +68,12 @@ class ZwoCamera(Camera):
     def load_lib(self):
         """Initialize the camera. """
 
-        init('libASICamera2.so')
+        if platform == 'linux' or platform == 'linux2':
+            init('libASICamera2.so')
+        elif platform == 'win32':
+            init('ASICamera2.dll')
+        else:
+            raise NotImplementedError('Platform not implemented.')
 
     @property
     def exp_time(self) -> float:
@@ -189,17 +195,26 @@ class CameraSubprocess(Subprocess):
     def inloop(self):
         """Add a function call in the event loop to read out the camera. """
         
+        t_s = time.time()
         if self._mode == CMD_CAMERA_REC_MODE:
             img_data = []
             for i in range(1000):
                 img_data.append(self.camera.capture_video_frame())
+            # Get FPS
+            t_f = time.time()    
+            fps = 1000 / (t_f - t_s)
+            self.send((CMD_CAMERA_GET_FPS, fps))
             # Update GUI
             self.send((CMD_DISPLAY_IMAGE, img_data[-1]))    
             # Return Image stack
             self.send((CMD_RETURN_REC, img_data))    
         elif self._mode == CMD_CAMERA_CONTINOUS_MODE:
             img_data = self.camera.capture_video_frame()
-            self.send((CMD_DISPLAY_IMAGE, img_data))
+            # GET FPS
+            t_f = time.time()
+            fps = 1 / (t_f - t_s)
+            self.send((CMD_CAMERA_GET_FPS, fps))
+            self.send((CMD_DISPLAY_IMAGE, img_data))        
 
         # Update the GUI every 10 seconds
         self.update_gui(10)
@@ -341,7 +356,7 @@ class CameraSubprocess(Subprocess):
 
 
 class CameraInterface(Interface):
-    def __init__(self, camera_type, image_label, res_queue: Queue, settings_window, streaming_button, rec_button, settings_button):
+    def __init__(self, camera_type, image_label, res_queue: Queue, settings_window, streaming_button, rec_button, settings_button, fps_display):
         """Constructor. camera_type: ZWO ASI120MM Mini or ZWO ASI174MM-Cool"""
 
         if camera_type == 'ZWO ASI120MM Mini':
@@ -360,6 +375,7 @@ class CameraInterface(Interface):
         self.streaming_button = streaming_button
         self.recording_button = rec_button
         self.settings_button = settings_button
+        self.fps_display = fps_display
 
         # Settings window
         self.settings_window = settings_window
@@ -414,6 +430,8 @@ class CameraInterface(Interface):
             self.update_roi(*data[1])
         elif cmd == CMD_CAMERA_GET_TEMP:
             self.update_temperature(data[1])
+        elif cmd == CMD_CAMERA_GET_FPS:
+            self.update_fps_dispaly(data[1])
 
     def display_image(self, image_data):
         """Display an image. """
@@ -501,6 +519,9 @@ class CameraInterface(Interface):
             self.com_queue.put((CMD_CAMERA_SET_EXP, exp_time))
         except ValueError as e:
             logging.info(f'{e}')
+
+    def update_fps_dispaly(self, fps):
+        self.fps_display.setText(f'{fps:.0f} FPS')
     
     def set_roi(self):
         """Set the ROI. 
@@ -537,6 +558,9 @@ class CameraInterface(Interface):
         # Reset buttons
         self.streaming_button.setText('Start Stream')
         self.recording_button.setText('Start Recording')
+
+        # Reset FPS dispaly
+        self.update_fps_dispaly(0)
         
     def set_continuous_mode(self):
 

@@ -103,8 +103,8 @@ class MainWindow(QMainWindow):
         self.res_queue = Queue()
 
         # Initialize the camera interfaces
-        self.mini_camera_interface = CameraInterface(star_camera_name, self.imageLabelMini, self.res_queue, self.asi_mini_settings, self.miniStreamingButton, self.miniRecordingButton, self.miniSettingsButton)
-        self.cool_camera_interface = CameraInterface(science_camera_name, self.imageLabelCool, self.res_queue, self.asi_cool_settings, self.coolStreamingButton, self.coolRecordingButton, self.coolSettingsButton)
+        self.mini_camera_interface = CameraInterface(star_camera_name, self.imageLabelMini, self.res_queue, self.asi_mini_settings, self.miniStreamingButton, self.miniRecordingButton, self.miniSettingsButton, self.miniFpsDispaly)
+        self.cool_camera_interface = CameraInterface(science_camera_name, self.imageLabelCool, self.res_queue, self.asi_cool_settings, self.coolStreamingButton, self.coolRecordingButton, self.coolSettingsButton, self.coolFpsDisplay)
 
         # Create the interface manager
         self.interface_manager = InterfaceManager(self.mini_camera_interface, self.cool_camera_interface)

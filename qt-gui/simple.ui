@@ -75,8 +75,8 @@
      <rect>
       <x>820</x>
       <y>40</y>
-      <width>166</width>
-      <height>131</height>
+      <width>161</width>
+      <height>141</height>
      </rect>
     </property>
     <property name="title">
@@ -104,15 +104,25 @@
        </property>
       </widget>
      </item>
+     <item>
+      <widget class="QLabel" name="miniFpsDispaly">
+       <property name="text">
+        <string>0 FPS</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
     </layout>
    </widget>
    <widget class="QGroupBox" name="groupBox_2">
     <property name="geometry">
      <rect>
       <x>820</x>
-      <y>240</y>
-      <width>157</width>
-      <height>131</height>
+      <y>210</y>
+      <width>161</width>
+      <height>151</height>
      </rect>
     </property>
     <property name="title">
@@ -137,6 +147,16 @@
       <widget class="QPushButton" name="coolSettingsButton">
        <property name="text">
         <string>Settings ASI74MM</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="coolFpsDisplay">
+       <property name="text">
+        <string>0 FPS</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
       </widget>
      </item>

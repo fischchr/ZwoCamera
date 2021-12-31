@@ -86,7 +86,6 @@ class CameraSettingsWindow(QWidget):
         min_height = 2
         max_height = int((sensor_h - 2*abs(offset_y)) / 2) * 2
         self.height_input.setRange(min_height, max_height)
-        print(min_height, max_height)
         self.height_input.setSingleStep(2)
 
         # Offset x
