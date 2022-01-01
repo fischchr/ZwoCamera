@@ -64,6 +64,15 @@ class ZwoCamera(Camera):
 
         self._exp_time = None
         self._highspeed = False
+
+    def __del__(self):
+        """Overwrite destructor to handle exceptions during closing. """
+
+        try:
+            self.close()
+        except Exception:
+            # Handle exceptions during closing (i.e., when no camera was connected)
+            pass
         
     def load_lib(self):
         """Initialize the camera. """
@@ -168,7 +177,14 @@ class CameraSubprocess(Subprocess):
         """Extend the event loop of subprocess. """
         
         # Set camera
-        self.camera = ZwoCamera(self._camera_type)
+        try:
+            self.camera = ZwoCamera(self._camera_type)
+        except ValueError:
+            # Stop the subprocess if the camera was not found
+            logging.info(f'Could not connect to camera {self._camera_type}. Stopping {self}.')
+            # Tell the main process that the camera subprocess has stopped
+            self.send((CMD_STOP_SUBPROCESS,))
+            return
 
         info = self.camera.get_camera_property()
         self._sensor_w = info['MaxWidth']
@@ -190,6 +206,9 @@ class CameraSubprocess(Subprocess):
         # Stop video mode
         self.camera.stop_video_capture()
         self.camera.highspeed = False
+
+        # Tell the main process that the camera subprocess has stopped
+        self.send((CMD_STOP_SUBPROCESS,))
 
 
     def inloop(self):
@@ -243,6 +262,8 @@ class CameraSubprocess(Subprocess):
             self.get_temperature()
         elif res[0] == CMD_CAMERA_SET_TEMP:
             self.set_temperature(res[1])
+        else:
+            raise NotImplementedError(f'{res[0]}')
 
         
     def get_exposure_time(self):
@@ -392,6 +413,14 @@ class CameraInterface(Interface):
         # Camera state
         self._camera_state = None
 
+    def toggle_controls(self, state: bool):
+        """Enable or disable the controls. """
+
+        self.streaming_button.setEnabled(state)
+        self.recording_button.setEnabled(state)
+        self.settings_button.setEnabled(state)
+        self.fps_display.setEnabled(state)
+
     def toggle_streaming_mode(self):
         if self._camera_state == CMD_CAMERA_MODE_STOP or self._camera_state == CMD_CAMERA_REC_MODE:
             self.set_continuous_mode()
@@ -417,6 +446,17 @@ class CameraInterface(Interface):
 
         return CameraSubprocess(self.uid, self._camera_type, self.com_queue, self.res_queue)
 
+    def crash_cleanup(self):
+        """Handle a crashed subprocess. """
+
+        logging.info(f'subprocess {self.subprocess} crashed. {self} resetting GUI.')
+        # Cleanly stop the subprocess
+        self.subprocess.join()
+        self.subprocess = None
+
+        # Disable the GUI elements
+        self.toggle_controls(False)
+
     def handle_data(self, data):
         """Handle data sent back from the camera subprocess. """
 
@@ -432,6 +472,10 @@ class CameraInterface(Interface):
             self.update_temperature(data[1])
         elif cmd == CMD_CAMERA_GET_FPS:
             self.update_fps_dispaly(data[1])
+        elif cmd == CMD_STOP_SUBPROCESS:
+            self.crash_cleanup()
+        else:
+            raise NotImplementedError(f'{cmd}')
 
     def display_image(self, image_data):
         """Display an image. """
