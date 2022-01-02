@@ -6,6 +6,7 @@ from PyQt5.QtGui import QImage, QPixmap
 from PIL  import Image
 import time
 from sys import platform
+from RoiWarningDialog import RoiWarningDialog
 
 
 def roi_absolute_to_swh(roi_x_1, roi_x_2, roi_y_1, roi_y_2):
@@ -172,6 +173,7 @@ class CameraSubprocess(Subprocess):
         # Timer for updating the GUI regularly
         self._update_timer = 0
 
+        self._fps_timer = 0
     
     def run(self):
         """Extend the event loop of subprocess. """
@@ -214,9 +216,10 @@ class CameraSubprocess(Subprocess):
     def inloop(self):
         """Add a function call in the event loop to read out the camera. """
         
-        t_s = time.time()
+        
         if self._mode == CMD_CAMERA_REC_MODE:
             img_data = []
+            t_s = time.time()
             for i in range(1000):
                 img_data.append(self.camera.capture_video_frame())
             # Get FPS
@@ -231,7 +234,8 @@ class CameraSubprocess(Subprocess):
             img_data = self.camera.capture_video_frame()
             # GET FPS
             t_f = time.time()
-            fps = 1 / (t_f - t_s)
+            fps = 1 / (t_f - self._fps_timer)
+            self._fps_timer = t_f
             self.send((CMD_CAMERA_GET_FPS, fps))
             self.send((CMD_DISPLAY_IMAGE, img_data))        
 
@@ -413,6 +417,9 @@ class CameraInterface(Interface):
         # Camera state
         self._camera_state = None
 
+        # Show warning for large ROIs
+        self._warn_large_roi = True
+
     def toggle_controls(self, state: bool):
         """Enable or disable the controls. """
 
@@ -472,6 +479,8 @@ class CameraInterface(Interface):
             self.update_temperature(data[1])
         elif cmd == CMD_CAMERA_GET_FPS:
             self.update_fps_dispaly(data[1])
+        elif cmd == CMD_RETURN_REC:
+            pass
         elif cmd == CMD_STOP_SUBPROCESS:
             self.crash_cleanup()
         else:
@@ -621,6 +630,24 @@ class CameraInterface(Interface):
     def set_rec_mode(self):
 
         logging.info('Starting recording')
+
+        # Get the height of the ROI
+        roi_h = self.settings_window.height_input.value()
+        # Show a warning when it is too large
+        if roi_h > 128 and self._warn_large_roi:
+            logging.info('Large ROI height. Showing warning dialog')
+            dialog_window = RoiWarningDialog(roi_h)
+            answer = dialog_window.exec()
+            dismiss = dialog_window.dismiss_state()
+            self._warn_large_roi = not dismiss
+            logging.debug(f'Dialog window continue: {answer}. Checkbox state {dismiss}.')
+            
+            if not answer:
+                logging.info('Aborting recording')
+                
+                return
+
+            logging.info('Continuing')
 
         # Start recording
         self._camera_state = CMD_CAMERA_REC_MODE

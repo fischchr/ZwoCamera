@@ -61,7 +61,7 @@ class CameraSettingsWindow(QWidget):
         roi_height = int(height / 2) * 2
         assert roi_height > 0, 'ROI height must be positive'
 
-        return offset_x, width, offset_y, height
+        return offset_x, roi_width, offset_y, roi_height
 
     def set_roi_values(self, offset_x, width, offset_y, height, sensor_w, sensor_h):
 
